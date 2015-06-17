@@ -38,7 +38,7 @@ public class TrackAdapter extends ArrayAdapter<Hashtable<String, String>> {
 
             viewHolder = new ViewHolder();
             viewHolder.albumImageView = (ImageView)convertView.findViewById(R.id.imageview_albumImg);
-            viewHolder.trackNameTextView = (TextView)convertView.findViewById(R.id.textview_tracktName);
+            viewHolder.trackNameTextView = (TextView)convertView.findViewById(R.id.textview_trackName);
             viewHolder.albumNameTextView = (TextView)convertView.findViewById(R.id.textview_albumName);
             // save into tag
             convertView.setTag(viewHolder);

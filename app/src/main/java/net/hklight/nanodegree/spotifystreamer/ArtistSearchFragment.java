@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v7.widget.SearchView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -30,7 +31,7 @@ public class ArtistSearchFragment extends Fragment implements AdapterView.OnItem
 
     private final String LOG_TAG = ArtistSearchFragment.class.getSimpleName();
 
-    private ArrayList<Hashtable<String, String>> dataset;
+    private ArrayList<Hashtable<String, String>> dataset = new ArrayList<Hashtable<String, String>>();
 
     // view
     private boolean isSearching = false;
@@ -38,6 +39,7 @@ public class ArtistSearchFragment extends Fragment implements AdapterView.OnItem
     // adapter
     private ArtistAdapter artistAdapter;
     private String searchViewKeyword = "";
+
 
     public ArtistSearchFragment() {
     }
@@ -47,29 +49,23 @@ public class ArtistSearchFragment extends Fragment implements AdapterView.OnItem
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
 
-        // get the artist list back, so we don't need to query again if the screen rotate...
-        if (savedInstanceState != null && savedInstanceState.getSerializable("dataset") != null) {
-            dataset = (ArrayList<Hashtable<String, String>>) savedInstanceState.getSerializable("dataset");
+    }
 
-            searchViewKeyword = savedInstanceState.getString("searchViewKeyword");
-        } else {
-            dataset = new ArrayList<Hashtable<String, String>>();
-        }
+    @Override
+    public void onViewCreated(View view, Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
 
     }
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
-        //super.onSaveInstanceState(outState);
 
+        Log.d(LOG_TAG, "onSaveInstanceState");
         // save the search result
-        // avoid research
-        if (dataset != null) {
-            outState.putSerializable("dataset", dataset);
-        }
-
+        outState.putSerializable("dataset", dataset);
         outState.putString("searchViewKeyword", searchViewKeyword);
 
+        super.onSaveInstanceState(outState);
     }
 
     @Override
@@ -84,7 +80,6 @@ public class ArtistSearchFragment extends Fragment implements AdapterView.OnItem
             searchItem.expandActionView();
             searchView.setQuery(searchViewKeyword, false);
         }
-
 
 
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
@@ -126,23 +121,38 @@ public class ArtistSearchFragment extends Fragment implements AdapterView.OnItem
         searchResultListView.setEmptyView(rootView.findViewById(android.R.id.empty));
         searchResultListView.setOnItemClickListener(this);
 
-        rootView.findViewById(android.R.id.empty).setVisibility(View.INVISIBLE);
+        //rootView.findViewById(android.R.id.empty).setVisibility(View.INVISIBLE);
 
-        // research the adapter by the data
-        artistAdapter = new ArtistAdapter(getActivity(), dataset);
-        searchResultListView.setAdapter(artistAdapter);
+        // get the artist list back, so we don't need to query again if the screen rotate...
+        if (savedInstanceState != null) {
+            Log.d(LOG_TAG, "recover from rotate");
+            dataset = (ArrayList<Hashtable<String, String>>) savedInstanceState.getSerializable("dataset");
 
+            searchViewKeyword = savedInstanceState.getString("searchViewKeyword");
+
+            // reconstruct the adapter
+            artistAdapter = new ArtistAdapter(getActivity(), dataset);
+            searchResultListView.setAdapter(artistAdapter);
+
+
+        } else {
+            Log.d(LOG_TAG, "new Intent");
+            dataset = new ArrayList<Hashtable<String, String>>();
+        }
 
         return rootView;
     }
 
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+
+
         Hashtable<String, String> selectedArtist = artistAdapter.getItem(position);
 
-        Intent detailIntent = new Intent(getActivity(), TopTenTracksActivity.class);
-        detailIntent.putExtra("selectedArtist", selectedArtist);
-        startActivity(detailIntent);
+        // user select the artist
+        // then pass to host activity to decide the display pathway, whether by invoke activity, or pass to new fragment
+        ((ArtistSelectedCallback)(getActivity())).onArtistSelected(selectedArtist);
+
     }
 
     public class ArtistSearchAsyncTask extends AsyncTask<String,Void,List<Artist>> {
@@ -210,5 +220,8 @@ public class ArtistSearchFragment extends Fragment implements AdapterView.OnItem
     }
 
 
+    public interface ArtistSelectedCallback {
+        public void onArtistSelected(Hashtable<String, String> selectedArtist);
+    }
 
 }

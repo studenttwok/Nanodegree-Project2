@@ -2,6 +2,7 @@ package net.hklight.nanodegree.spotifystreamer;
 
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -23,64 +24,47 @@ import retrofit.RetrofitError;
 
 public class TopTenTracksActivity extends ActionBarActivity {
     private final String LOG_TAG = TopTenTracksActivity.class.getSimpleName();
-
-    private String artistName = "";
-    private TrackAdapter trackAdapter;
-    private ListView topTenTracksListView;
-
-    private HashMap<String, String> artist;
-    private ArrayList<Hashtable<String, String>> dataset;
+    private final String FRAGMENT_TAG = "FRAG";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_top_ten_tracks);
-        topTenTracksListView = (ListView) findViewById(R.id.listview_toptentracks);
-        topTenTracksListView.setEmptyView(findViewById(android.R.id.empty));
 
-        // init it
-        dataset = new ArrayList<Hashtable<String, String>>();
+        //  new intent
+        if (savedInstanceState == null) {
 
-        // get the artist list back, so we don't need to query again if the screen rotate...
-        if (savedInstanceState != null && savedInstanceState.getSerializable("dataset") != null) {
-            // triggle by activity destroy and recreate
-            dataset = (ArrayList<Hashtable<String, String>>)savedInstanceState.getSerializable("dataset");
+            String artistName = "";
+            Hashtable<String, String> artist = new Hashtable<String, String>();
 
-            artist = (HashMap<String, String>)savedInstanceState.getSerializable("artist");
-            artistName = savedInstanceState.getString("artistName");
-
-            // recreate the listview adapter
-            trackAdapter = new TrackAdapter(TopTenTracksActivity.this, dataset);
-            topTenTracksListView.setAdapter(trackAdapter);
-
-        } else {
             // from previous activity intent
-            artist = (HashMap<String, String>) getIntent().getSerializableExtra("selectedArtist");
+            // things from serializable is changed to Hashmap...
+
+            artist.putAll((HashMap<String, String>) getIntent().getExtras().getSerializable("selectedArtist"));
+
             artistName = artist.get("artistName");
 
-            // start async task to get the top 10 track
-            TopTenTracksAsyncTask topTenTracksAsyncTask = new TopTenTracksAsyncTask();
-            topTenTracksAsyncTask.execute(artist.get("artistId"));
-        }
+            // get arguments
+            Bundle data = new Bundle();
+            data.putSerializable("selectedArtist", artist);
+            data.putString("artistName", artistName);
 
-        // set the title
-        getSupportActionBar().setTitle(R.string.title_activity_top_ten_tracks);
-        getSupportActionBar().setSubtitle(artistName);
 
-    }
+            TopTenTracksFragment topTenTracksFragment = new TopTenTracksFragment();
+            topTenTracksFragment.setArguments(data);
 
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        //super.onSaveInstanceState(outState);
-        // save the search result
-        // avoid research
-        if (dataset != null) {
-            outState.putSerializable("dataset", dataset);
-            outState.putSerializable("artist", artist);
-            outState.putSerializable("artistName", artistName);
+            // pass to fragment
+            FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
+            ft.add(R.id.framelayout_fragmentContainer, topTenTracksFragment);
+            ft.commit();
+
+            // set the title
+            getSupportActionBar().setTitle(R.string.title_activity_top_ten_tracks);
+            getSupportActionBar().setSubtitle(artistName);
         }
 
     }
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -106,91 +90,5 @@ public class TopTenTracksActivity extends ActionBarActivity {
     }
 
 
-    public class TopTenTracksAsyncTask extends AsyncTask<String,Void, List<Track>> {
-
-        @Override
-        protected void onPreExecute() {
-
-        }
-
-        @Override
-        protected List<Track> doInBackground(String... params) {
-            if (params.length != 1) {
-                return null;
-            }
-
-            // incoke the spotify api
-            SpotifyApi api = new SpotifyApi();
-            SpotifyService spotify = api.getService();
-
-            HashMap<String, Object> spotifyParams = new HashMap<String, Object>();
-            spotifyParams.put("country", "HK");
-
-            try {
-                Tracks tracks = spotify.getArtistTopTrack(params[0], spotifyParams);
-                return tracks.tracks;
-            } catch (RetrofitError e) {
-                e.printStackTrace();
-                return null;
-            }
-
-
-        }
-
-        @Override
-        protected void onPostExecute(List<Track> tracks) {
-
-            if (tracks == null) {
-                // Error occure
-                Toast.makeText(TopTenTracksActivity.this, R.string.errorOccurs, Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            // convert it into hashtable
-            dataset.clear();
-
-            if (tracks.size() == 0) {
-                // let the user know
-                Toast.makeText(TopTenTracksActivity.this, R.string.trackNotFound, Toast.LENGTH_LONG).show();
-            }
-
-
-            for (Track track : tracks) {
-                String trackName = track.name;
-                String albumName = track.album.name;
-                String smallAlbumImage = "";
-                String largeAlbumImage = "";
-                if (track.album.images.size() > 0) {
-                    for (int i=0; i < track.album.images.size(); i++) {
-                        Image image = track.album.images.get(i);
-
-                        if (image.width == 640) {
-                            // This is large
-                            largeAlbumImage = image.url;
-                        } else if (image.width == 200) {
-                            smallAlbumImage = image.url;
-                        }
-                    }
-
-                    // if image is not in 640 or 200, pick first one...
-                    smallAlbumImage = track.album.images.get(0).url;
-                    largeAlbumImage = track.album.images.get(0).url;
-                }
-
-                // and then save them
-                Hashtable<String, String> eachTrack = new Hashtable<String, String>();
-                eachTrack.put("trackName", trackName);
-                eachTrack.put("albumName", albumName);
-                eachTrack.put("smallAlbumImage", smallAlbumImage);
-                eachTrack.put("previewUrl", track.preview_url);
-
-
-                dataset.add(eachTrack);
-            }
-
-            trackAdapter = new TrackAdapter(TopTenTracksActivity.this, dataset);
-            topTenTracksListView.setAdapter(trackAdapter);
-        }
-    }
 
 }

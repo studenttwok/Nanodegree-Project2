@@ -2,20 +2,18 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-     tools:context=".MainActivityFragment">
+    tools:context="net.hklight.nanodegree.spotifystreamer.TopTenTracksActivity">
 
     <ListView
-        android:id="@+id/listview_searchResult"
+        android:id="@+id/listview_toptentracks"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        style="@style/ArtistListStyle"
         />
 
     <TextView android:id="@android:id/empty"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/artistNotFound"
+        android:text="@string/trackNotFound"
         android:layout_gravity="center" />
 
 </FrameLayout>

@@ -5,6 +5,7 @@
     android:minHeight="?android:attr/listPreferredItemHeightLarge"
     android:layout_margin="8dp"
     android:gravity="center"
+    android:background="@drawable/touch_selector"
     >
 
     <ImageView

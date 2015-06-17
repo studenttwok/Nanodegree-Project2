@@ -1,5 +1,10 @@
-<fragment xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools" android:id="@+id/fragment"
-    android:name="net.hklight.nanodegree.spotifystreamer.ArtistSearchFragment"
-    tools:layout="@layout/fragment_artistsearch" android:layout_width="match_parent"
-    android:layout_height="match_parent" />
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/framelayout_masterFragmentContainer"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    tools:layout="@layout/fragment_artistsearch"
+    />
