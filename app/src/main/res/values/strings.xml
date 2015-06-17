@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">SpotifyStreamer</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+
+    <string name="hint_artistName">Artist Name</string>
+    <string name="toast_enterKeywordPlease">Please input keyword</string>
+    <string name="title_activity_top_ten_tracks">Top 10 Tracks</string>
+    <string name="errorOccurs">Error Occurs, unable to establish connection to Spotify server</string>
+
+    <string name="action_search">Search</string>
+    <string name="trackNotFound">Top Tracks Not Found</string>
+    <string name="artistNotFound">Artist Not Found, refine search please</string>
+
+
+</resources>
