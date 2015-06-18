@@ -2,6 +2,7 @@
 package net.hklight.nanodegree.spotifystreamer;
 
 // Declare any non-default types here with import statements
+import net.hklight.nanodegree.spotifystreamer.IMusicPlayerListener;
 
 interface IMusicPlayerService {
     /**
@@ -17,4 +18,5 @@ interface IMusicPlayerService {
     void seekTo(in int positionMs);
     void setDataSource(in Uri datasource, in boolean playAfterLoaded);
     boolean isAudioLoaded();
+    void setOnErrorListener(IMusicPlayerListener musicPlayerListener);
 }

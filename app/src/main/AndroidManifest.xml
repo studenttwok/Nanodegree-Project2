@@ -26,6 +26,7 @@
             android:parentActivityName=".MainActivity">
         </activity>
 
+        <activity android:name=".MusicPlayerActivity" />
         <service android:name=".MusicPlayerService" />
     </application>
 

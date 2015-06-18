@@ -12,6 +12,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.RemoteException;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.DialogFragment;
@@ -33,7 +34,7 @@ import java.util.Hashtable;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class MusicPlayerDialogFragment extends DialogFragment implements MediaPlayer.OnPreparedListener, View.OnClickListener, SeekBar.OnSeekBarChangeListener {
+public class MusicPlayerDialogFragment extends DialogFragment implements  View.OnClickListener, SeekBar.OnSeekBarChangeListener {
 
     private final String LOG_TAG = MusicPlayerDialogFragment.class.getSimpleName();
 
@@ -105,6 +106,9 @@ public class MusicPlayerDialogFragment extends DialogFragment implements MediaPl
                     // show pause button
                     playImageButton.setImageResource(android.R.drawable.ic_media_pause);
                 }
+            } else if (msg.what == 3) {
+                Toast.makeText(getActivity(), R.string.mediaPlayerError, Toast.LENGTH_SHORT).show();
+                loadingTextView.setText(R.string.error);
             }
 
         }
@@ -132,13 +136,7 @@ public class MusicPlayerDialogFragment extends DialogFragment implements MediaPl
         }
     };
 
-    private TimerTask timerTask = new TimerTask() {
-        @Override
-        public void run() {
-            // invoke ui thread handler to update ui
-            mHandler.sendEmptyMessage(1);
-        }
-    };
+    private TimerTask timerTask;
 
     private void setPlayPauseButtonSrc(boolean displayPlay) {
         Message msg = mHandler.obtainMessage();
@@ -181,7 +179,7 @@ public class MusicPlayerDialogFragment extends DialogFragment implements MediaPl
         previousImageButton.setOnClickListener(this);
         nextImageButton.setOnClickListener(this);
 
-        timer = new Timer();
+
 
 
         return rootView;
@@ -196,14 +194,16 @@ public class MusicPlayerDialogFragment extends DialogFragment implements MediaPl
         artist = (Hashtable<String, String>) getArguments().getSerializable("artist");
 
         dataset = (ArrayList<Hashtable<String, String>>) getArguments().getSerializable("dataset");
-        currentMusicPosition = getArguments().getInt("position");
 
+        /*
+        currentMusicPosition = getArguments().getInt("position");
         if (savedInstanceState != null) {
             currentMusicPosition = savedInstanceState.getInt("currentMusicPosition");
         }
-
-
+        */
+        currentMusicPosition = PreferenceManager.getDefaultSharedPreferences(getActivity()).getInt("currentMusicPosition", 0);
         selectedTrack = dataset.get(currentMusicPosition);
+
 
 
 
@@ -217,6 +217,8 @@ public class MusicPlayerDialogFragment extends DialogFragment implements MediaPl
     }
 
     private void updateTrackViewInfo() {
+
+
         // update uri
         previewUri = Uri.parse(selectedTrack.get("previewUrl"));
 
@@ -246,10 +248,29 @@ public class MusicPlayerDialogFragment extends DialogFragment implements MediaPl
         // try to play the music
         try {
             // load the data if it is not yet loaded
+            mIMusicPlayerService.setOnErrorListener(new IMusicPlayerListener.Stub() {
+                @Override
+                public void onErrorListener(int what, int extra) throws RemoteException {
+                    Log.d(LOG_TAG, "onErrorListener in Fragment");
+                    mHandler.sendEmptyMessage(3);
+                }
+
+            });
+            // save the current music position
+            PreferenceManager.getDefaultSharedPreferences(this.getActivity()).edit().putInt("currentMusicPosition", currentMusicPosition).commit();
+            loadingTextView.setText(R.string.loading);
             mIMusicPlayerService.setDataSource(previewUri, true);
             //mIMusicPlayerService.play();
 
             // register timertask to update data
+            timerTask = new TimerTask() {
+                @Override
+                public void run() {
+                    // invoke ui thread handler to update ui
+                    mHandler.sendEmptyMessage(1);
+                }
+            };
+
             timer.scheduleAtFixedRate(timerTask, 250, 250);
 
             if (mIMusicPlayerService.isPlaying()) {
@@ -267,7 +288,10 @@ public class MusicPlayerDialogFragment extends DialogFragment implements MediaPl
 
     @Override
     public void onStart() {
+        Log.d(LOG_TAG, "onStart()");
         super.onStart();
+
+        timer = new Timer();
 
         // connect to service again
         Intent musicPlayerService = new Intent(getActivity(), MusicPlayerService.class);
@@ -277,10 +301,17 @@ public class MusicPlayerDialogFragment extends DialogFragment implements MediaPl
 
     @Override
     public void onStop() {
+        Log.d(LOG_TAG, "onStop()");
         super.onStop();
 
         // disconnect from the service
         getActivity().unbindService(mConnection);
+
+        if (timerTask != null) {
+            timerTask.cancel();
+        }
+        timer.cancel();
+        timer = null;
     }
 
     @NonNull
@@ -299,12 +330,6 @@ public class MusicPlayerDialogFragment extends DialogFragment implements MediaPl
         long m = (seconds / 60) % 60;
         long h = (seconds / (60 * 60)) % 24;
         return String.format("%d:%02d:%02d", h,m,s);
-    }
-
-    @Override
-    public void onPrepared(MediaPlayer mp) {
-        // if the file is prepared
-        mp.start();
     }
 
     @Override
@@ -330,6 +355,8 @@ public class MusicPlayerDialogFragment extends DialogFragment implements MediaPl
                 selectedTrack = dataset.get(currentMusicPosition);
                 updateTrackViewInfo();
                 try {
+                    PreferenceManager.getDefaultSharedPreferences(this.getActivity()).edit().putInt("currentMusicPosition", currentMusicPosition).commit();
+                    loadingTextView.setText(R.string.loading);
                     mIMusicPlayerService.setDataSource(previewUri, mIMusicPlayerService.isPlaying());
                 } catch (RemoteException e) {
                     e.printStackTrace();
@@ -344,6 +371,8 @@ public class MusicPlayerDialogFragment extends DialogFragment implements MediaPl
                 selectedTrack = dataset.get(currentMusicPosition);
                 updateTrackViewInfo();
                 try {
+                    PreferenceManager.getDefaultSharedPreferences(this.getActivity()).edit().putInt("currentMusicPosition", currentMusicPosition).commit();
+                    loadingTextView.setText(R.string.loading);
                     mIMusicPlayerService.setDataSource(previewUri, mIMusicPlayerService.isPlaying());
                 } catch (RemoteException e) {
                     e.printStackTrace();
@@ -410,4 +439,6 @@ public class MusicPlayerDialogFragment extends DialogFragment implements MediaPl
     public void onStopTrackingTouch(SeekBar seekBar) {
 
     }
+
+
 }
