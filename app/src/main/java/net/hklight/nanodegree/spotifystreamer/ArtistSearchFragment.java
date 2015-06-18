@@ -1,6 +1,5 @@
 package net.hklight.nanodegree.spotifystreamer;
 
-import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -40,6 +39,9 @@ public class ArtistSearchFragment extends Fragment implements AdapterView.OnItem
     private ArtistAdapter artistAdapter;
     private String searchViewKeyword = "";
 
+    private MenuItem searchItem;
+    private String currentKeyword = "";
+
 
     public ArtistSearchFragment() {
     }
@@ -64,6 +66,8 @@ public class ArtistSearchFragment extends Fragment implements AdapterView.OnItem
         // save the search result
         outState.putSerializable("dataset", dataset);
         outState.putString("searchViewKeyword", searchViewKeyword);
+        outState.putString("currentKeyword", currentKeyword);
+
 
         super.onSaveInstanceState(outState);
     }
@@ -72,13 +76,14 @@ public class ArtistSearchFragment extends Fragment implements AdapterView.OnItem
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         inflater.inflate(R.menu.menu_artistsearch, menu);
 
-        MenuItem searchItem = menu.findItem(R.id.action_search);
+        searchItem = menu.findItem(R.id.action_search);
         final SearchView searchView = (SearchView) MenuItemCompat.getActionView(searchItem);
         searchView.setQueryHint(getString(R.string.hint_artistName));
         if (searchViewKeyword.length() > 0) {
             // retain the searchview state
-            searchItem.expandActionView();
+            //searchItem.expandActionView();
             searchView.setQuery(searchViewKeyword, false);
+
         }
 
 
@@ -97,7 +102,17 @@ public class ArtistSearchFragment extends Fragment implements AdapterView.OnItem
                         // start search
                         ArtistSearchAsyncTask asat = new ArtistSearchAsyncTask();
                         asat.execute(keyword);
+
+                        if (searchItem != null) {
+                            searchItem.collapseActionView();
+                        }
+                        getActivity().setTitle(keyword);
+
+                        currentKeyword = keyword;
+
                     }
+
+
                 }
                 // event consumed
                 return true;
@@ -134,6 +149,10 @@ public class ArtistSearchFragment extends Fragment implements AdapterView.OnItem
             artistAdapter = new ArtistAdapter(getActivity(), dataset);
             searchResultListView.setAdapter(artistAdapter);
 
+            if (savedInstanceState.getString("currentKeyword").length() > 0) {
+                getActivity().setTitle(savedInstanceState.getString("currentKeyword"));
+                currentKeyword = savedInstanceState.getString("currentKeyword");
+            }
 
         } else {
             Log.d(LOG_TAG, "new Intent");

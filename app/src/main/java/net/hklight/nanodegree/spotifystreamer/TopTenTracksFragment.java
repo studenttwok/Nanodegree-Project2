@@ -110,6 +110,8 @@ public class TopTenTracksFragment extends Fragment implements AdapterView.OnItem
         Bundle data = new Bundle();
         data.putSerializable("selectedTrack", selectedTrack);
         data.putSerializable("artist", artist);
+        data.putSerializable("dataset", dataset);
+        data.putSerializable("position", position);
 
         Log.d(LOG_TAG, "Selected Data: " + data);
 

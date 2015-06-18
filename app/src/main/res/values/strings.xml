@@ -12,5 +12,9 @@
     <string name="trackNotFound">Top Tracks Not Found</string>
     <string name="artistNotFound">Artist Not Found, refine search please</string>
 
+    <string name="initTime">-:--:--</string>
+    <string name="noMorePreviousTrack">No More Previous Track</string>
+    <string name="noMoreNextTrack">No More Next Track</string>
+    <string name="loading">Loading...</string>
 
 </resources>
