@@ -26,4 +26,20 @@
     <string name="noSongIsLoaded">No Song is Loaded in Player</string>
     <string name="musicPlayer">Music Player</string>
 
+    <string name="previous">Previous</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="next">Next</string>
+
+    <string name="action_share">Share</string>
+    <string name="showNotificationOnLock">Show notification on lock screen</string>
+    <string name="menu_changeCountryCode">Change Country Code</string>
+    <string name="changeCountryCode">Change country code</string>
+    <string name="inputCountryCode">Input country code</string>
+
+    <string name="ok">Okay</string>
+    <string name="cancel">Cancel</string>
+
+    <string name="default_country" translatable="false">HK</string>
+
 </resources>

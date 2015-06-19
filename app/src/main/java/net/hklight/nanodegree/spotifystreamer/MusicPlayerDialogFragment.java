@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Message;
@@ -13,8 +14,13 @@ import android.os.RemoteException;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.DialogFragment;
+import android.support.v4.view.MenuItemCompat;
+import android.support.v7.widget.ShareActionProvider;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -59,7 +65,9 @@ public class MusicPlayerDialogFragment extends DialogFragment implements  View.O
     private IMusicPlayerService mIMusicPlayerService;
     private boolean mBound = false;
     private Timer timer;
-
+    private TimerTask timerTask;
+    private ShareActionProvider mShareActionProvider;
+    private Intent shareIntent;
 
     private android.os.Handler mHandler = new android.os.Handler() {
         @Override
@@ -97,6 +105,7 @@ public class MusicPlayerDialogFragment extends DialogFragment implements  View.O
                         e.printStackTrace();
                     }
                 }
+
             } else if (msg.what == 2) {
                 if (msg.arg1 == 1) {
                     // show pause  button
@@ -106,8 +115,15 @@ public class MusicPlayerDialogFragment extends DialogFragment implements  View.O
                     playImageButton.setImageResource(android.R.drawable.ic_media_pause);
                 }
             } else if (msg.what == 3) {
-                Toast.makeText(getActivity(), R.string.mediaPlayerError, Toast.LENGTH_SHORT).show();
-                loadingTextView.setText(R.string.error);
+                if (getActivity() != null) {
+                    Toast.makeText(getActivity(), R.string.mediaPlayerError, Toast.LENGTH_SHORT).show();
+                    loadingTextView.setText(R.string.error);
+                }
+            } else if (msg.what == 4){
+                // no toast, error
+                if (getActivity() != null) {
+                    loadingTextView.setText(R.string.error);
+                }
             }
 
         }
@@ -136,7 +152,14 @@ public class MusicPlayerDialogFragment extends DialogFragment implements  View.O
 
     };
 
-    private TimerTask timerTask;
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true);
+    }
+
+
 
     private void setPlayPauseButtonSrc(boolean displayPlay) {
         Message msg = mHandler.obtainMessage();
@@ -178,8 +201,6 @@ public class MusicPlayerDialogFragment extends DialogFragment implements  View.O
         playImageButton.setOnClickListener(this);
         previousImageButton.setOnClickListener(this);
         nextImageButton.setOnClickListener(this);
-
-
 
 
         return rootView;
@@ -265,7 +286,11 @@ public class MusicPlayerDialogFragment extends DialogFragment implements  View.O
                     @Override
                     public void onError(int what, int extra) throws RemoteException {
                         Log.d(LOG_TAG, "onErrorListener in Fragment");
-                        mHandler.sendEmptyMessage(3);
+                        if (extra == MediaPlayer.MEDIA_ERROR_IO) {
+                            mHandler.sendEmptyMessage(3);
+                        } else {
+                            mHandler.sendEmptyMessage(4);
+                        }
                     }
 
                     @Override
@@ -280,6 +305,10 @@ public class MusicPlayerDialogFragment extends DialogFragment implements  View.O
                 String audioUrl = dataset.get(currentMusicPosition).get("previewUrl");
                 Log.d(LOG_TAG, "audioUrl: " + audioUrl);
                 //mIMusicPlayerService.setDataSource(Uri.parse(audioUrl), true);
+                shareIntent = createShareIntent();
+                if (mShareActionProvider != null && shareIntent != null) {
+                    mShareActionProvider.setShareIntent(shareIntent);
+                }
                 mIMusicPlayerService.prepareTrack(0, true);
 
 
@@ -398,6 +427,8 @@ public class MusicPlayerDialogFragment extends DialogFragment implements  View.O
                     //String audioUrl = dataset.get(currentMusicPosition).get("previewUrl");
 
                     //mIMusicPlayerService.setDataSource(Uri.parse(audioUrl), mIMusicPlayerService.isPlaying());
+                    shareIntent = createShareIntent();
+                    mShareActionProvider.setShareIntent(shareIntent);
                     mIMusicPlayerService.prepareTrack(-1, mIMusicPlayerService.isPlaying());
 
                 } catch (RemoteException e) {
@@ -419,6 +450,8 @@ public class MusicPlayerDialogFragment extends DialogFragment implements  View.O
                     //String audioUrl = dataset.get(currentMusicPosition).get("previewUrl");
                     loadingTextView.setText(R.string.loading);
                     //mIMusicPlayerService.setDataSource(Uri.parse(audioUrl), mIMusicPlayerService.isPlaying());
+                    shareIntent = createShareIntent();
+                    mShareActionProvider.setShareIntent(shareIntent);
                     mIMusicPlayerService.prepareTrack(+1, mIMusicPlayerService.isPlaying());
                 } catch (RemoteException e) {
                     e.printStackTrace();
@@ -487,4 +520,44 @@ public class MusicPlayerDialogFragment extends DialogFragment implements  View.O
     }
 
 
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+
+        shareIntent = createShareIntent();
+
+        inflater.inflate(R.menu.menu_fragment_musicplayerdialog, menu);
+        MenuItem menuItem = menu.findItem(R.id.action_share);
+        mShareActionProvider = (ShareActionProvider) MenuItemCompat.getActionProvider(menuItem);
+
+        if (mShareActionProvider != null) {
+            if (shareIntent != null) {
+                mShareActionProvider.setShareIntent(shareIntent);
+            }
+        } else {
+            Log.d(LOG_TAG, "Share Provider is null");
+        }
+    }
+
+    private Intent createShareIntent() {
+        String trackId = "";
+        try {
+            if (mIMusicPlayerService == null || mIMusicPlayerService.getDataset() == null) {
+                return null;
+            }
+            Hashtable<String, String> selectedTrack = (Hashtable<String, String>) mIMusicPlayerService.getDataset().get(currentMusicPosition);
+            trackId = selectedTrack.get("trackId");
+            Log.d(LOG_TAG, trackId);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+
+        }
+
+        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+        shareIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET);
+        shareIntent.setType("text/plain");
+        shareIntent.putExtra(Intent.EXTRA_TEXT, "http://open.spotify.com/track/" + trackId);
+        return shareIntent;
+
+    }
 }

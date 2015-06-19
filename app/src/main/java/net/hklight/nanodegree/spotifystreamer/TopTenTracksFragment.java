@@ -3,6 +3,7 @@ package net.hklight.nanodegree.spotifystreamer;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
@@ -141,10 +142,10 @@ public class TopTenTracksFragment extends Fragment implements AdapterView.OnItem
 
 
     public class TopTenTracksAsyncTask extends AsyncTask<String,Void, List<Track>> {
-
+        private String countryCode = "HK";
         @Override
         protected void onPreExecute() {
-
+            countryCode = PreferenceManager.getDefaultSharedPreferences(TopTenTracksFragment.this.getActivity()).getString("countryCode", getString(R.string.default_country));
         }
 
         @Override
@@ -158,7 +159,7 @@ public class TopTenTracksFragment extends Fragment implements AdapterView.OnItem
             SpotifyService spotify = api.getService();
 
             Hashtable<String, Object> spotifyParams = new Hashtable<String, Object>();
-            spotifyParams.put("country", "HK");
+            spotifyParams.put("country", countryCode);
 
             try {
                 Tracks tracks = spotify.getArtistTopTrack(params[0], spotifyParams);

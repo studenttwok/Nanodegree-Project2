@@ -1,8 +1,17 @@
 package net.hklight.nanodegree.spotifystreamer;
 
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.ActionBarActivity;
+import android.support.v7.app.AlertDialog;
+import android.text.Editable;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.widget.EditText;
 
 import java.util.HashMap;
 import java.util.Hashtable;
@@ -51,5 +60,26 @@ public class TopTenTracksActivity extends ActionBarActivity {
 
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_activity_toptentracks, menu);
+
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.action_nowPlaying) {
+            // show now playing window
+            // this is in one pane mode
+            Intent musicPlayerActivity = new Intent(this, MusicPlayerActivity.class);
+            startActivity(musicPlayerActivity);
+            return true;
+
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
 
 }

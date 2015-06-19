@@ -8,16 +8,26 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.AsyncTask;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
 import android.os.RemoteException;
+import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
+import android.widget.ImageView;
 import android.widget.RemoteViews;
 
+import com.squareup.picasso.Picasso;
+
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
@@ -28,12 +38,13 @@ public class MusicPlayerService extends Service {
     private final static String LOG_TAG = MusicPlayerService.class.getSimpleName();
     private int ONGOING_NOTIFICATION_ID = 100;
     private Notification notification;
-    private RemoteViews notificationView;
+    //private RemoteViews notificationView;
     private NotificationManager mNotificationManager;
 
     // variables
     private MediaPlayer mMediaPlayer;
     private boolean isAudioLoaded = false;
+    private boolean isAudioPreparing = false;
     private Uri currentPlayingUri;
     private IMusicPlayerListener mMusicPlayerListener;
 
@@ -42,6 +53,26 @@ public class MusicPlayerService extends Service {
     private ArrayList<Hashtable<String, String>> dataset = null;
     private int currentMusicPosition = -1;
 
+    // for temperaory store
+    private String currentTrackName = "";
+    private String currentArtistName = "";
+    private Bitmap largeBitmap = null;
+
+
+
+    private Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+
+            if (msg.what == 1) {
+                // create notification
+                mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                notification = createNotification(android.R.drawable.ic_media_play, currentTrackName, currentArtistName);
+                mNotificationManager.notify(ONGOING_NOTIFICATION_ID, notification);
+            }
+        }
+    };
 
     private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
 
@@ -53,10 +84,12 @@ public class MusicPlayerService extends Service {
                 // pause music
                 try {
                     // check if the music is playing
-                    if (mBinder.isPlaying()) {
-                        mBinder.pause();
-                    } else {
-                        mBinder.play();
+                    if (mBinder.isAudioLoaded()) {
+                        if (mBinder.isPlaying()) {
+                            mBinder.pause();
+                        } else {
+                            mBinder.play();
+                        }
                     }
                 } catch (RemoteException e) {
                     e.printStackTrace();
@@ -104,38 +137,11 @@ public class MusicPlayerService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
 
         mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        Intent notificationIntent = new Intent(this, MusicPlayerActivity.class);
-        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET);
-
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
-
-        notificationView = new RemoteViews(getPackageName(), R.layout.remoteview_musicplayer);
 
 
-        // Listeners
-        Intent pauseIntent = new Intent("net.hklight.nanodegree.spotifystremer.ACTION_PLAYPAUSE");
-        PendingIntent pendingPauseIntent = PendingIntent.getBroadcast(this, 100, pauseIntent, 0);
-        notificationView.setOnClickPendingIntent(R.id.button_play, pendingPauseIntent);
 
-        Intent previousIntent = new Intent("net.hklight.nanodegree.spotifystremer.ACTION_PREVIOUS");
-        PendingIntent pendingPreviousIntent = PendingIntent.getBroadcast(this, 100, previousIntent, 0);
-        notificationView.setOnClickPendingIntent(R.id.button_previous, pendingPreviousIntent);
-
-        Intent nextIntent = new Intent("net.hklight.nanodegree.spotifystremer.ACTION_NEXT");
-        PendingIntent pendingNextIntent = PendingIntent.getBroadcast(this, 100, nextIntent, 0);
-        notificationView.setOnClickPendingIntent(R.id.button_next, pendingNextIntent);
-
-
-        NotificationCompat.Builder mBuilder =
-                new NotificationCompat.Builder(this)
-                        .setContentIntent(pendingIntent)
-                        .setSmallIcon(R.mipmap.ic_launcher)
-                        .setContentTitle(getText(R.string.app_name))
-                        .setContentText(getText(R.string.musicPlayer))
-                        .setContent(notificationView);
-
-
-        notification = mBuilder.build();
+        //notificationView = new RemoteViews(getPackageName(), R.layout.remoteview_musicplayer);
+        notification = createNotification(android.R.drawable.ic_media_play, currentTrackName, currentArtistName);
 
 
         startForeground(ONGOING_NOTIFICATION_ID, notification);
@@ -143,6 +149,71 @@ public class MusicPlayerService extends Service {
 
         // If we get killed, after returning from here, restart
         return START_STICKY;
+    }
+
+    public Notification createNotification(int playPauseDrawable, String title, String content) {
+
+        if (title.length() == 0) {
+            title = getString(R.string.app_name);
+        }
+
+        if (content.length() == 0) {
+            content = getString(R.string.musicPlayer);
+        }
+
+        Intent notificationIntent = new Intent(this, MusicPlayerActivity.class);
+        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+
+        // Listeners
+        Intent pauseIntent = new Intent("net.hklight.nanodegree.spotifystremer.ACTION_PLAYPAUSE");
+        PendingIntent pendingPauseIntent = PendingIntent.getBroadcast(this, 100, pauseIntent, 0);
+        //notificationView.setOnClickPendingIntent(R.id.button_play, pendingPauseIntent);
+
+        Intent previousIntent = new Intent("net.hklight.nanodegree.spotifystremer.ACTION_PREVIOUS");
+        PendingIntent pendingPreviousIntent = PendingIntent.getBroadcast(this, 100, previousIntent, 0);
+        //notificationView.setOnClickPendingIntent(R.id.button_previous, pendingPreviousIntent);
+
+        Intent nextIntent = new Intent("net.hklight.nanodegree.spotifystremer.ACTION_NEXT");
+        PendingIntent pendingNextIntent = PendingIntent.getBroadcast(this, 100, nextIntent, 0);
+        //notificationView.setOnClickPendingIntent(R.id.button_next, pendingNextIntent);
+
+
+
+
+        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this)
+                .setContentIntent(pendingIntent)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle(title)
+                .setContentText(content)
+
+                //.addAction(android.R.drawable.ic_media_previous, getString(R.string.previous), pendingPreviousIntent) // #0
+                //.addAction(android.R.drawable.ic_media_play, getString(R.string.play), pendingPauseIntent)  // #1
+                //.addAction(android.R.drawable.ic_media_next, getString(R.string.next), pendingNextIntent)   // #2
+                //.setContent(notificationView);
+                .addAction(android.R.drawable.ic_media_previous, "", pendingPreviousIntent) // #0
+                .addAction(playPauseDrawable, "", pendingPauseIntent)  // #1
+                .addAction(android.R.drawable.ic_media_next, "", pendingNextIntent)   // #2
+                //.setStyle(new NotificationCompat.MediaStyle().setMediaSession(mMediaPlayer.getAudioSessionId()))
+                //.setShowActionsInCompactView(1);
+                //.setContentTitle("Wonderful music")
+                //.setContentText("My Awesome Band")
+                //.setLargeIcon(albumArtBitmap)
+                //.build();
+                ;
+
+        if (PreferenceManager.getDefaultSharedPreferences(this).getBoolean("showNotificationOnLock", true)) {
+            mBuilder.setVisibility(Notification.VISIBILITY_PUBLIC);
+        } else {
+            mBuilder.setVisibility(Notification.VISIBILITY_SECRET);
+        }
+
+        if (largeBitmap != null) {
+            mBuilder.setLargeIcon(largeBitmap);
+        }
+
+        Notification notification = mBuilder.build();
+        return notification;
     }
 
     @Override
@@ -155,7 +226,7 @@ public class MusicPlayerService extends Service {
     public boolean onUnbind(Intent intent) {
         Log.d(LOG_TAG, "onUnbind()");
         Log.d(LOG_TAG, "mMediaPlayer is playing: " + mMediaPlayer.isPlaying());
-        if (!mMediaPlayer.isPlaying()) {
+        if (!mMediaPlayer.isPlaying() && !isAudioPreparing) {
             Log.d(LOG_TAG, "mMediaPlayer is not Playing");
             // can stop forground
             // can stop self
@@ -192,14 +263,16 @@ public class MusicPlayerService extends Service {
 
         @Override
         public void play() throws RemoteException {
-            notificationView.setImageViewResource(R.id.button_play, android.R.drawable.ic_media_pause);
+            notification = createNotification(android.R.drawable.ic_media_pause, currentTrackName, currentArtistName);
+            //notificationView.setImageViewResource(R.id.button_play, android.R.drawable.ic_media_pause);
             mNotificationManager.notify(ONGOING_NOTIFICATION_ID, notification);
             mMediaPlayer.start();
         }
 
         @Override
         public void pause() throws RemoteException {
-            notificationView.setImageViewResource(R.id.button_play, android.R.drawable.ic_media_play);
+            notification = createNotification(android.R.drawable.ic_media_play, currentTrackName, currentArtistName);
+            //notificationView.setImageViewResource(R.id.button_play, android.R.drawable.ic_media_play);
             mNotificationManager.notify(ONGOING_NOTIFICATION_ID, notification);
             mMediaPlayer.pause();
         }
@@ -226,25 +299,29 @@ public class MusicPlayerService extends Service {
 
         @Override
         public void prepareTrack(int musicPositionOffset, final boolean playAfterLoaded) throws RemoteException {
+
             // no error checking on currentMusicPosition
-            if (currentMusicPosition == 0 || currentMusicPosition == dataset.size() - 1) {
+            if (dataset == null || (currentMusicPosition + musicPositionOffset)  < 0 || (currentMusicPosition + musicPositionOffset) > dataset.size() - 1 ) {
                 // no more move...
                 return;
             }
 
-            currentMusicPosition  += musicPositionOffset;
 
-            String audioUrl = dataset.get(currentMusicPosition).get("previewUrl");
+            // get the audio
+            String audioUrl = dataset.get(currentMusicPosition + musicPositionOffset).get("previewUrl");
             Uri audioUri = Uri.parse(audioUrl);
-
-
 
             if (audioUri.equals(currentPlayingUri)) {
                 // try to open the same audio.. ignore it...
                 return;
             }
+
+            // ok , so things get real, increase
+            currentMusicPosition  += musicPositionOffset;
+
             try {
                 isAudioLoaded = false;
+                isAudioPreparing = true;
                 if (mMediaPlayer.isPlaying()) {
                     mMediaPlayer.stop();
                     mMediaPlayer.release();
@@ -260,6 +337,7 @@ public class MusicPlayerService extends Service {
                         @Override
                         public boolean onError(MediaPlayer mp, int what, int extra) {
                             Log.d(LOG_TAG, "setOnErrorListener");
+                            isAudioPreparing = false;
                             try {
                                 mMusicPlayerListener.onError(what, extra);
                             } catch (RemoteException e) {
@@ -275,7 +353,9 @@ public class MusicPlayerService extends Service {
                             Log.d(LOG_TAG, "setOnCompletionListener");
 
                             // update the view
-                            notificationView.setImageViewResource(R.id.button_play, android.R.drawable.ic_media_play);
+                            //notificationView.setImageViewResource(R.id.button_play, android.R.drawable.ic_media_play);
+                            //notification.actions[1].icon = android.R.drawable.ic_media_play;
+                            notification = createNotification(android.R.drawable.ic_media_play, currentTrackName, currentArtistName);
                             mNotificationManager.notify(ONGOING_NOTIFICATION_ID, notification);
 
                             try {
@@ -291,10 +371,13 @@ public class MusicPlayerService extends Service {
                     @Override
                     public void onPrepared(MediaPlayer mp) {
                         isAudioLoaded = true;
+                        isAudioPreparing = false;
 
                         if (playAfterLoaded) {
 
-                            notificationView.setImageViewResource(R.id.button_play, android.R.drawable.ic_media_pause);
+                            //notificationView.setImageViewResource(R.id.button_play, android.R.drawable.ic_media_pause);
+                            //notification.actions[1].icon = android.R.drawable.ic_media_pause;
+                            notification = createNotification(android.R.drawable.ic_media_pause, currentTrackName, currentArtistName);
                             mNotificationManager.notify(ONGOING_NOTIFICATION_ID, notification);
 
                             mMediaPlayer.start();
@@ -304,10 +387,34 @@ public class MusicPlayerService extends Service {
                 currentPlayingUri = audioUri;
                 mMediaPlayer.prepareAsync();
 
-                notificationView.setTextViewText(R.id.textview_text1, dataset.get(currentMusicPosition).get("trackName"));
-                notificationView.setTextViewText(R.id.textview_text2, artist.get("artistName"));
-                notificationView.setImageViewResource(R.id.button_play, android.R.drawable.ic_media_play);
-                mNotificationManager.notify(ONGOING_NOTIFICATION_ID, notification);
+                //notificationView.setTextViewText(R.id.textview_text1, dataset.get(currentMusicPosition).get("trackName"));
+                //notificationView.setTextViewText(R.id.textview_text2, artist.get("artistName"));
+                //notificationView.setImageViewResource(R.id.button_play, android.R.drawable.ic_media_play);
+                currentTrackName =  dataset.get(currentMusicPosition).get("trackName");
+                currentArtistName = artist.get("artistName");
+                if (dataset.get(currentMusicPosition).get("smallAlbumImage").length() > 0) {
+
+                    // start thread to download...
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                String url = dataset.get(currentMusicPosition).get("smallAlbumImage");
+                                largeBitmap = Picasso.with(MusicPlayerService.this).load(url).get();
+                                mHandler.sendEmptyMessage(1);
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }).start();
+
+                } else {
+                    largeBitmap = null;
+                    mHandler.sendEmptyMessage(1);
+                }
+
+
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -358,6 +465,31 @@ public class MusicPlayerService extends Service {
             return currentPlayingUri.toString();
         }
     };
+
+    // copy from stackoverflow
+    private class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
+
+        public DownloadImageTask() {
+
+        }
+
+        protected Bitmap doInBackground(String... urls) {
+            String urldisplay = urls[0];
+            Bitmap mIcon11 = null;
+            try {
+                InputStream in = new java.net.URL(urldisplay).openStream();
+                mIcon11 = BitmapFactory.decodeStream(in);
+            } catch (Exception e) {
+                Log.e("Error", e.getMessage());
+                e.printStackTrace();
+            }
+            return mIcon11;
+        }
+
+        protected void onPostExecute(Bitmap result) {
+
+        }
+    }
 
 
 }

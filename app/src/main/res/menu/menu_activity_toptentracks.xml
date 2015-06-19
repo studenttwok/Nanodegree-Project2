@@ -12,17 +12,5 @@
         app:showAsAction="always"
         />
 
-    <item
-        android:id="@+id/action_changeCountryCode"
-        android:title="@string/menu_changeCountryCode"
-        app:showAsAction="never"
-        />
-
-    <item android:id="@+id/action_showNotificationOnLock"
-        android:title="@string/showNotificationOnLock"
-        android:icon="@android:drawable/ic_menu_preferences"
-        android:checkable="true"
-        app:showAsAction="never"
-        />
 
 </menu>
