@@ -6,13 +6,10 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.media.MediaPlayer;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.RemoteException;
-import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.DialogFragment;
@@ -38,12 +35,14 @@ public class MusicPlayerDialogFragment extends DialogFragment implements  View.O
 
     private final String LOG_TAG = MusicPlayerDialogFragment.class.getSimpleName();
 
-    private MediaPlayer mMediaPlayer;
-    private Hashtable<String, String> selectedTrack;
-    private Hashtable<String, String> artist;
-    private ArrayList<Hashtable<String, String>> dataset = new ArrayList<Hashtable<String, String>>();
-    private int currentMusicPosition = 0;
-    private Uri previewUri;
+    //private MediaPlayer mMediaPlayer;
+    //private Hashtable<String, String> selectedTrack;
+
+    // temp hold the data
+    private Hashtable<String, String> artist = null;
+    private ArrayList<Hashtable<String, String>> dataset = null;
+    private int currentMusicPosition = -1;
+
 
     private SeekBar progressSeekbar;
     private TextView artistNameTextView;
@@ -134,6 +133,7 @@ public class MusicPlayerDialogFragment extends DialogFragment implements  View.O
             mIMusicPlayerService = null;
             mBound = false;
         }
+
     };
 
     private TimerTask timerTask;
@@ -190,10 +190,12 @@ public class MusicPlayerDialogFragment extends DialogFragment implements  View.O
     public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        //selectedTrack = (Hashtable<String, String>) getArguments().getSerializable("selectedTrack");
-        artist = (Hashtable<String, String>) getArguments().getSerializable("artist");
-
-        dataset = (ArrayList<Hashtable<String, String>>) getArguments().getSerializable("dataset");
+        if (getArguments() != null && getArguments().getSerializable("artist") != null && getArguments().getSerializable("dataset") != null) {
+            //selectedTrack = (Hashtable<String, String>) getArguments().getSerializable("selectedTrack");
+            artist = (Hashtable<String, String>) getArguments().getSerializable("artist");
+            dataset = (ArrayList<Hashtable<String, String>>) getArguments().getSerializable("dataset");
+            currentMusicPosition = getArguments().getInt("position");
+        }
 
         /*
         currentMusicPosition = getArguments().getInt("position");
@@ -201,14 +203,6 @@ public class MusicPlayerDialogFragment extends DialogFragment implements  View.O
             currentMusicPosition = savedInstanceState.getInt("currentMusicPosition");
         }
         */
-        currentMusicPosition = PreferenceManager.getDefaultSharedPreferences(getActivity()).getInt("currentMusicPosition", 0);
-        selectedTrack = dataset.get(currentMusicPosition);
-
-
-
-
-        // update music view
-        updateTrackViewInfo();
 
         // start service
         Intent musicPlayerService = new Intent(getActivity(), MusicPlayerService.class);
@@ -218,9 +212,9 @@ public class MusicPlayerDialogFragment extends DialogFragment implements  View.O
 
     private void updateTrackViewInfo() {
 
+        Hashtable<String, String> selectedTrack = dataset.get(currentMusicPosition);
 
         // update uri
-        previewUri = Uri.parse(selectedTrack.get("previewUrl"));
 
         artistNameTextView.setText(artist.get("artistName"));
         trackNameTextView.setText(selectedTrack.get("trackName"));
@@ -247,36 +241,74 @@ public class MusicPlayerDialogFragment extends DialogFragment implements  View.O
         // debug
         // try to play the music
         try {
-            // load the data if it is not yet loaded
-            mIMusicPlayerService.setOnErrorListener(new IMusicPlayerListener.Stub() {
-                @Override
-                public void onErrorListener(int what, int extra) throws RemoteException {
-                    Log.d(LOG_TAG, "onErrorListener in Fragment");
-                    mHandler.sendEmptyMessage(3);
-                }
 
-            });
-            // save the current music position
-            PreferenceManager.getDefaultSharedPreferences(this.getActivity()).edit().putInt("currentMusicPosition", currentMusicPosition).commit();
-            loadingTextView.setText(R.string.loading);
-            mIMusicPlayerService.setDataSource(previewUri, true);
-            //mIMusicPlayerService.play();
+            // check if the new data pass to this fragment
+            // so we use the data from service...
+            if (artist == null || dataset == null) {
+                Log.d(LOG_TAG, "Load form Service");
+                // obtain from service
+                dataset = (ArrayList<Hashtable<String, String>>) mIMusicPlayerService.getDataset();
+                artist = (Hashtable<String, String>) mIMusicPlayerService.getArtist();
+                currentMusicPosition = mIMusicPlayerService.getCurrentMusicPosition();
 
-            // register timertask to update data
-            timerTask = new TimerTask() {
-                @Override
-                public void run() {
-                    // invoke ui thread handler to update ui
-                    mHandler.sendEmptyMessage(1);
-                }
-            };
-
-            timer.scheduleAtFixedRate(timerTask, 250, 250);
-
-            if (mIMusicPlayerService.isPlaying()) {
-                setPlayPauseButtonSrc(false);
             } else {
-                setPlayPauseButtonSrc(true);
+                Log.d(LOG_TAG, "Data Sent to Service");
+                // submit to service
+                mIMusicPlayerService.setDataset(dataset, currentMusicPosition);
+                mIMusicPlayerService.setArtist(artist);
+            }
+
+            // some song is loaded
+            if (dataset != null) {
+                // load the data if it is not yet loaded
+                mIMusicPlayerService.setOnErrorListener(new IMusicPlayerListener.Stub() {
+                    @Override
+                    public void onError(int what, int extra) throws RemoteException {
+                        Log.d(LOG_TAG, "onErrorListener in Fragment");
+                        mHandler.sendEmptyMessage(3);
+                    }
+
+                    @Override
+                    public void onCompletion() throws RemoteException {
+
+                    }
+
+                });
+                // save the current music position
+                loadingTextView.setText(R.string.loading);
+
+                String audioUrl = dataset.get(currentMusicPosition).get("previewUrl");
+                Log.d(LOG_TAG, "audioUrl: " + audioUrl);
+                //mIMusicPlayerService.setDataSource(Uri.parse(audioUrl), true);
+                mIMusicPlayerService.prepareTrack(0, true);
+
+
+                //mIMusicPlayerService.play();
+
+                // register timertask to update data
+                timerTask = new TimerTask() {
+                    @Override
+                    public void run() {
+                        // invoke ui thread handler to update ui
+                        mHandler.sendEmptyMessage(1);
+                    }
+                };
+
+                timer.scheduleAtFixedRate(timerTask, 250, 250);
+
+                if (mIMusicPlayerService.isPlaying()) {
+                    setPlayPauseButtonSrc(false);
+                } else {
+                    setPlayPauseButtonSrc(true);
+                }
+
+                // update music view
+                updateTrackViewInfo();
+
+            } else {
+                // no song is loaded
+                //Toast.makeText(getActivity(), R.string.noSongIsLoaded, Toast.LENGTH_SHORT).show();
+                loadingTextView.setText(R.string.noSongIsLoaded);
             }
 
         } catch (RemoteException e) {
@@ -347,17 +379,27 @@ public class MusicPlayerDialogFragment extends DialogFragment implements  View.O
     @Override
     public void onClick(View v) {
         if (v.getId() == R.id.imagebutton_play) {
+            if (dataset == null) {
+                return;
+            }
             doPlayPauseMusic();
         } else if (v.getId() == R.id.imagebutton_previous) {
             // back to first song
+            if (dataset == null) {
+                return;
+            }
             if (currentMusicPosition > 0) {
                 currentMusicPosition--;
-                selectedTrack = dataset.get(currentMusicPosition);
                 updateTrackViewInfo();
                 try {
-                    PreferenceManager.getDefaultSharedPreferences(this.getActivity()).edit().putInt("currentMusicPosition", currentMusicPosition).commit();
+
                     loadingTextView.setText(R.string.loading);
-                    mIMusicPlayerService.setDataSource(previewUri, mIMusicPlayerService.isPlaying());
+
+                    //String audioUrl = dataset.get(currentMusicPosition).get("previewUrl");
+
+                    //mIMusicPlayerService.setDataSource(Uri.parse(audioUrl), mIMusicPlayerService.isPlaying());
+                    mIMusicPlayerService.prepareTrack(-1, mIMusicPlayerService.isPlaying());
+
                 } catch (RemoteException e) {
                     e.printStackTrace();
                 }
@@ -366,14 +408,18 @@ public class MusicPlayerDialogFragment extends DialogFragment implements  View.O
             }
         } else if (v.getId() == R.id.imagebutton_next) {
             // go to next song
+            if (dataset == null) {
+                return;
+            }
             if (currentMusicPosition < dataset.size()-1) {
                 currentMusicPosition++;
-                selectedTrack = dataset.get(currentMusicPosition);
                 updateTrackViewInfo();
                 try {
-                    PreferenceManager.getDefaultSharedPreferences(this.getActivity()).edit().putInt("currentMusicPosition", currentMusicPosition).commit();
+
+                    //String audioUrl = dataset.get(currentMusicPosition).get("previewUrl");
                     loadingTextView.setText(R.string.loading);
-                    mIMusicPlayerService.setDataSource(previewUri, mIMusicPlayerService.isPlaying());
+                    //mIMusicPlayerService.setDataSource(Uri.parse(audioUrl), mIMusicPlayerService.isPlaying());
+                    mIMusicPlayerService.prepareTrack(+1, mIMusicPlayerService.isPlaying());
                 } catch (RemoteException e) {
                     e.printStackTrace();
                 }

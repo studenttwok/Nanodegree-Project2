@@ -1,10 +1,10 @@
 package net.hklight.nanodegree.spotifystreamer;
 
 import android.content.Intent;
+import android.os.Bundle;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.ActionBarActivity;
-import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
@@ -13,6 +13,7 @@ import java.util.Hashtable;
 
 public class MainActivity extends ActionBarActivity implements ArtistSearchFragment.ArtistSelectedCallback {
     private final String LOG_TAG = MainActivity.class.getSimpleName();
+    private final String MUSICPLAYER_FRAGMENT = "MUSICPLAYER_FRAG";
 
     private boolean mTwoPane = false;
 
@@ -53,6 +54,24 @@ public class MainActivity extends ActionBarActivity implements ArtistSearchFragm
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.action_nowPlaying) {
+            // show now playing window
+
+            if (mTwoPane) {
+                // ths is in two pane mode
+                FragmentManager fm = getSupportFragmentManager();
+                MusicPlayerDialogFragment musicPlayerDialogFragment = new MusicPlayerDialogFragment();
+                musicPlayerDialogFragment.show(fm, MUSICPLAYER_FRAGMENT);
+            } else {
+                // this is in one pane mode
+                Intent musicPlayerActivity = new Intent(this, MusicPlayerActivity.class);
+                startActivity(musicPlayerActivity);
+
+            }
+            return true;
+
+        }
+
         return super.onOptionsItemSelected(item);
     }
 

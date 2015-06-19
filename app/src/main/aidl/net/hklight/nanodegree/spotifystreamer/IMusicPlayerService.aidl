@@ -16,7 +16,17 @@ interface IMusicPlayerService {
     int getDuration();
     int getCurrentPosition();
     void seekTo(in int positionMs);
-    void setDataSource(in Uri datasource, in boolean playAfterLoaded);
+    //void setDataSource(in Uri datasource, in boolean playAfterLoaded);
+    void prepareTrack(int musicPositionOffset, boolean playAfterLoaded);
     boolean isAudioLoaded();
     void setOnErrorListener(IMusicPlayerListener musicPlayerListener);
+
+    void setArtist(in Map artist);
+    void setDataset(in List dataset, int currentMusicPosition);
+
+    Map getArtist();
+    List getDataset();
+    int getCurrentMusicPosition();
+    String getCurrentPlayingUriStr();
+
 }

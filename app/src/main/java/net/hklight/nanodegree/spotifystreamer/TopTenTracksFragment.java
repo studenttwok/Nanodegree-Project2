@@ -3,15 +3,11 @@ package net.hklight.nanodegree.spotifystreamer;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.util.Log;
 import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -44,7 +40,6 @@ public class TopTenTracksFragment extends Fragment implements AdapterView.OnItem
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setHasOptionsMenu(true);
     }
 
     @Nullable
@@ -95,36 +90,6 @@ public class TopTenTracksFragment extends Fragment implements AdapterView.OnItem
 
     }
 
-    @Override
-    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-        inflater.inflate(R.menu.menu_fragment_musicplayerdialog, menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.action_nowPlaying) {
-            // show now playing window
-
-            if (selectedData != null) {
-                if (getActivity() instanceof MainActivity) {
-                    // ths is in two pane mode
-                    FragmentManager fm = getActivity().getSupportFragmentManager();
-                    MusicPlayerDialogFragment musicPlayerDialogFragment = new MusicPlayerDialogFragment();
-                    musicPlayerDialogFragment.setArguments(selectedData);
-                    musicPlayerDialogFragment.show(fm, MUSICPLAYER_FRAGMENT);
-                } else {
-                    // this is in one pane mode
-                    Intent musicPlayerActivity = new Intent(getActivity(), MusicPlayerActivity.class);
-                    musicPlayerActivity.putExtras(selectedData);
-                    startActivity(musicPlayerActivity);
-
-                }
-            }
-
-        }
-
-        return super.onOptionsItemSelected(item);
-    }
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
@@ -144,15 +109,14 @@ public class TopTenTracksFragment extends Fragment implements AdapterView.OnItem
         // pass to music player
         // if it is in two pane mode, open dialog
         // elase open activity
-        Hashtable<String, String> selectedTrack = dataset.get(position);
+        //Hashtable<String, String> selectedTrack = dataset.get(position);
         selectedData = new Bundle();
-        selectedData.putSerializable("selectedTrack", selectedTrack);
+        //selectedData.putSerializable("selectedTrack", selectedTrack);
         selectedData.putSerializable("artist", artist);
         selectedData.putSerializable("dataset", dataset);
         selectedData.putSerializable("position", position);
 
         // save the current position
-        PreferenceManager.getDefaultSharedPreferences(this.getActivity()).edit().putInt("currentMusicPosition", position).commit();
 
 
         Log.d(LOG_TAG, "Selected Data: " + selectedData);

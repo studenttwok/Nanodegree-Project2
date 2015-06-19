@@ -16,28 +16,41 @@ public class MusicPlayerActivity extends ActionBarActivity {
 
         setContentView(R.layout.activity_musicplayer);
 
+        setTitle(R.string.musicPlayer);
+
         if (savedInstanceState == null) {
             // create fragment
-            Bundle data = getIntent().getExtras();
-
-            HashMap<String, String> artistMap = (HashMap<String, String>) data.get("artist");
-            ArrayList<HashMap<String, String>> datasetMap = (ArrayList<HashMap<String, String>>) data.get("dataset");
-
-            ArrayList<Hashtable<String, String>> dataset = new ArrayList<Hashtable<String, String>>();
-
-
-            // convert the hashmap to hashtable
-            for (int i = 0; i < datasetMap.size(); i++) {
-                Hashtable<String, String> eachEntry = new Hashtable<String, String>(datasetMap.get(i));
-                dataset.add(eachEntry);
-            }
-            Hashtable<String, String> artist = new Hashtable<String, String>(artistMap);
-
-            data.putSerializable("dataset", dataset);
-            data.putSerializable("artist", artist);
 
             MusicPlayerDialogFragment musicPlayerDialogFragment = new MusicPlayerDialogFragment();
-            musicPlayerDialogFragment.setArguments(data);
+
+
+            Bundle data = getIntent().getExtras();
+
+            HashMap<String, String> artistMap = null;
+            ArrayList<HashMap<String, String>> datasetMap = null;
+
+            ArrayList<Hashtable<String, String>> dataset = null;
+            Hashtable<String, String> artist = null;
+
+            if (data != null && data.get("artist") != null && data.get("dataset") != null) {
+                artistMap = (HashMap<String, String>) data.get("artist");
+                datasetMap = (ArrayList<HashMap<String, String>>) data.get("dataset");
+
+                dataset = new ArrayList<Hashtable<String, String>>();
+
+                // convert the hashmap to hashtable
+                for (int i = 0; i < datasetMap.size(); i++) {
+                    Hashtable<String, String> eachEntry = new Hashtable<String, String>(datasetMap.get(i));
+                    dataset.add(eachEntry);
+                }
+                artist = new Hashtable<String, String>(artistMap);
+
+                data.putSerializable("dataset", dataset);
+                data.putSerializable("artist", artist);
+
+                musicPlayerDialogFragment.setArguments(data);
+            }
+
 
             // add the fragment
             FragmentTransaction ft = getSupportFragmentManager().beginTransaction();

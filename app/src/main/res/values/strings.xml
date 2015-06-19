@@ -23,4 +23,7 @@
 
     <string name="menu_nowPlaying">Now Playing</string>
 
+    <string name="noSongIsLoaded">No Song is Loaded in Player</string>
+    <string name="musicPlayer">Music Player</string>
+
 </resources>
